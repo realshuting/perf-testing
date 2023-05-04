@@ -1,24 +1,30 @@
 This document outlines the instructions for performance testing using [Kwok](https://kwok.sigs.k8s.io/) for the Kyverno 1.10 release.
 
-# Create a single node KinD cluster
-```
-kind create cluster --image=kindest/node:v1.26.3
+# Create a base cluster using K3d
+
+Download k3d on Linux machine:
+```sh
+wget -q -O - https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
 ```
 
+Create the k3d cluster with 3 workers:
+```sh
 k3d cluster create --agents 3
+```
+
+More details for installation can be found [here](https://k3d.io/v5.4.9/#install-script):
 
 # Deploy Kwok in a cluster
-You can find detailed instructions [here](https://kwok.sigs.k8s.io/docs/user/kwok-in-cluster/).
 
 ## Variables preparation
-```
+```sh
 KWOK_WORK_DIR=$(mktemp -d)
 KWOK_REPO=kubernetes-sigs/kwok
 KWOK_LATEST_RELEASE=$(curl "https://api.github.com/repos/${KWOK_REPO}/releases/latest" | jq -r '.tag_name')
 ```
 
 ## Render kustomization yaml
-```
+```sh
 cat <<EOF > "${KWOK_WORK_DIR}/kustomization.yaml"
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
@@ -30,12 +36,12 @@ resources:
 EOF
 ```
 
-```
+```sh
 kubectl kustomize "${KWOK_WORK_DIR}" > "${KWOK_WORK_DIR}/kwok.yaml"
 ```
 
 ## `kwok` deployment 
-```
+```sh
 kubectl apply -f "${KWOK_WORK_DIR}/kwok.yaml"
 ```
 
@@ -105,9 +111,11 @@ END
 done
 ```
 
+More about Kowk on this [page](https://kwok.sigs.k8s.io/docs/user/kwok-in-cluster/).
+
 ## Install Prometheus stack
 
-```
+```sh
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm upgrade --install prometheus prometheus-community/prometheus --values ./value.yaml
 helm install kube-state-metrics prometheus-community/kube-state-metrics
@@ -115,11 +123,11 @@ helm install kube-state-metrics prometheus-community/kube-state-metrics
 
 # Install Kyverno
 
-```
-kubectl apply -f perf/servicemonitor.yaml
+```sh
+kubectl apply -f ./servicemonitor.yaml
 ```
 
-```
+```sh
 helm upgrade --install kyverno kyverno/kyverno -n kyverno \
   --create-namespace \
   --devel \
@@ -127,12 +135,22 @@ helm upgrade --install kyverno kyverno/kyverno -n kyverno \
   --set reportsController.serviceMonitor.enabled=true
 ```
 
-```
+```sh
 helm upgrade --install kyverno kyverno/kyverno-policies --set=podSecurityStandard=restricted --set=background=true --set=validationFailureAction=Enforce --devel
 ```
 
 # Create workloads
 
-```
+This script creates a single ReplicaSet with 1000 pods:
+```sh
 ./replicaset.sh
+```
+
+
+# Prometheus Queries
+
+## Admission Request Rate
+
+```
+sum(rate(kyverno_admission_requests_total{job="kyverno"}[3m]))
 ```

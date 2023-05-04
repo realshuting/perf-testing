@@ -10,8 +10,11 @@ metadata:
   namespace: test
 spec:
   containers:
-  - name: nginx
-    image: nginx
+  - name: busybox
+    image: busybox:1.35
+    args:
+    - sleep 
+    - 1d
     securityContext:
       allowPrivilegeEscalation: false
       runAsNonRoot: true
