@@ -1,5 +1,3 @@
-kubectl create ns test
-
 kubectl apply -f - <<EOF
 apiVersion: v1
 kind: Pod
@@ -8,31 +6,31 @@ metadata:
     app.kubernetes.io/component: perf-testing
     app.kubernetes.io/instance: perf-testing
     app.kubernetes.io/name: perf-testing
-  name: perf-testing-pod-1
+  name: perf-testing-1
   namespace: test
 spec:
-    containers:
-    - name: nginx
+  containers:
+  - name: nginx
     image: nginx
     securityContext:
-        allowPrivilegeEscalation: false
-        runAsNonRoot: true
-        seccompProfile:
+      allowPrivilegeEscalation: false
+      runAsNonRoot: true
+      seccompProfile:
         type: RuntimeDefault
-        capabilities:
+      capabilities:
         drop:
         - ALL
-    tolerations:
-    - key: "kwok.x-k8s.io/node"
+  tolerations:
+  - key: "kwok.x-k8s.io/node"
     operator: "Exists"
     effect: "NoSchedule"
-    affinity:
+  affinity:
     nodeAffinity:
-        requiredDuringSchedulingIgnoredDuringExecution:
+      requiredDuringSchedulingIgnoredDuringExecution:
         nodeSelectorTerms:
         - matchExpressions:
             - key: type
-                operator: In
-                values:
+              operator: In
+              values:
                 - kwok
 EOF
