@@ -1,0 +1,52 @@
+cd /root/perf
+
+sysctl -w fs.inotify.max_queued_events=1048576
+sysctl -w fs.inotify.max_user_watches=1048576
+sysctl -w fs.inotify.max_user_instances=1048576
+
+kind create cluster --config kind-config.yaml
+
+export PATH=$PATH:/usr/local/go/bin
+export GOPATH=$HOME/go
+cd /root/go/src/k8s.io/perf-tests
+
+./run-e2e.sh cluster-loader2 \
+  --testconfig=/root/go/src/k8s.io/perf-tests/clusterloader2/testing/load/config.yaml \
+  --provider=kind \
+  --kubeconfig=${HOME}/.kube/config \
+  --nodes=20 \
+  --enable-prometheus-server=true \
+  --tear-down-prometheus-server=true \
+  --prometheus-apiserver-scrape-port=6443 \
+  --prometheus-scrape-kubelets=true \
+  --prometheus-scrape-kube-proxy=true \
+  --prometheus-scrape-node-exporter=false \
+  --prometheus-scrape-kube-state-metrics=true \
+  --prometheus-scrape-metrics-server=true \
+  --prometheus-storage-class-provisioner=rancher.io/local-path \
+  --prometheus-storage-class-volume-type=standard \
+  --v=2 \
+  --report-dir=/root/perf/report-20-node \
+  &
+
+#  --prometheus-scrape-master-kubelets=true \
+#  --prometheus-scrape-etcd=true \
+
+
+
+helm install kyverno ./charts/kyverno -n kyverno --create-namespace --set=metricsService.type=NodePort --set=metricsService.nodePort=30539 --set replicaCount=3 --set=resources.limits.memory=4Gi --set serviceMonitor.enabled=true --set extraArgs={--profile=true} --set image.tag=v1.8.1-38-ge496fdea1
+helm install kyverno kyverno/kyverno-policies --set=podSecurityStandard=restricted --set=background=true
+helm uninstall kyverno kyverno/kyverno -n kyverno
+helm uninstall kyverno kyverno/kyverno-policies
+
+kubectl port-forward --address 147.75.54.217 svc/prometheus-k8s 9090:9090 -n monitoring
+kubectl edit cpol  disallow-selinux
+
+watch -t -n 10 "(kubectl get pod -A | wc -l) | tee -a podcount"
+
+container_memory_usage_bytes{image="ghcr.io/kyverno/kyverno:1.8-dev-609-gff5e0a361"}
+container_cpu_usage_seconds_total{image="ghcr.io/kyverno/kyverno:1.8-dev-609-gff5e0a361"}
+
+sum(increase(kyverno_admission_requests_total{container="kyverno"}[1m])) by (container)
+sum(rate(kyverno_client_queries_total{container="kyverno"}[1m])) by (container)
+sum(increase(kyverno_client_queries_total{container="kyverno"}[1m])) by (container)

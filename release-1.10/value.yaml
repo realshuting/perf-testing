@@ -1,0 +1,5 @@
+extraScrapeConfigs: |
+  - job_name: kyverno
+    static_configs:
+    - targets:
+      - kyverno-svc-metrics.kyverno.svc.cluster.local:8000
