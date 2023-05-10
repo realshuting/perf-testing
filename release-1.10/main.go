@@ -64,20 +64,20 @@ func newReplicaset() *v1.ReplicaSet {
 			Name:      "perf-testing",
 			Namespace: "test",
 			Labels: map[string]string{
-				"app.kubernetes.io/name: perf-testing": "perf-testing",
+				"app.kubernetes.io/name": "perf-testing",
 			},
 		},
 		Spec: v1.ReplicaSetSpec{
 			Replicas: &r,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"app.kubernetes.io/name: perf-testing": "perf-testing",
+					"app.kubernetes.io/name": "perf-testing",
 				},
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"app.kubernetes.io/name: perf-testing": "perf-testing",
+						"app.kubernetes.io/name": "perf-testing",
 					},
 				},
 				Spec: corev1.PodSpec{
