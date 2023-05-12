@@ -16,6 +16,7 @@ import (
 
 var (
 	kubeconfig           string
+	namespace            string
 	clientRateLimitBurst int
 	clientRateLimitQPS   float64
 	replicas             int
@@ -27,6 +28,7 @@ func main() {
 	var qps float64 = 100
 	flagset := flag.NewFlagSet("perf-testing", flag.ExitOnError)
 	flagset.StringVar(&kubeconfig, "kubeconfig", "/root/.kube/config", "Path to a kubeconfig. Only required if out-of-cluster.")
+	flagset.StringVar(&namespace, "namespace", "test", "Namespace to create the resource")
 	flagset.Float64Var(&clientRateLimitQPS, "clientRateLimitQPS", qps, "Configure the maximum QPS to the Kubernetes API server from Kyverno. Uses the client default if zero.")
 	flagset.IntVar(&clientRateLimitBurst, "clientRateLimitBurst", burst, "Configure the maximum burst for throttle. Uses the client default if zero.")
 	flagset.IntVar(&replicas, "replicas", 50, "Configure the replica number of the replicaset")
@@ -55,7 +57,7 @@ func main() {
 	for i := 0; i < count; i++ {
 		num := strconv.Itoa(i)
 		rs := newReplicaset(num)
-		_, err = client.AppsV1().ReplicaSets("test").Create(context.TODO(), rs, metav1.CreateOptions{})
+		_, err = client.AppsV1().ReplicaSets(namespace).Create(context.TODO(), rs, metav1.CreateOptions{})
 		if err != nil {
 			fmt.Println("failed to create the replicaset: ", err)
 			os.Exit(1)
