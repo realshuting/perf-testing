@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -18,6 +19,7 @@ var (
 	clientRateLimitBurst int
 	clientRateLimitQPS   float64
 	replicas             int
+	count                int
 )
 
 func main() {
@@ -28,6 +30,7 @@ func main() {
 	flagset.Float64Var(&clientRateLimitQPS, "clientRateLimitQPS", qps, "Configure the maximum QPS to the Kubernetes API server from Kyverno. Uses the client default if zero.")
 	flagset.IntVar(&clientRateLimitBurst, "clientRateLimitBurst", burst, "Configure the maximum burst for throttle. Uses the client default if zero.")
 	flagset.IntVar(&replicas, "replicas", 50, "Configure the replica number of the replicaset")
+	flagset.IntVar(&count, "count", 50, "Configure the total number of the replicaset")
 
 	flag.Parse()
 
@@ -46,22 +49,27 @@ func main() {
 		os.Exit(1)
 	}
 
-	rs := newReplicaset()
-	_, err = client.AppsV1().ReplicaSets("test").Create(context.TODO(), rs, metav1.CreateOptions{})
-	if err != nil {
-		fmt.Println("failed to create the replicaset: ", err)
-		os.Exit(1)
+	for i := 0; i < count; i++ {
+		num := strconv.Itoa(i)
+		rs := newReplicaset(num)
+		_, err = client.AppsV1().ReplicaSets("test").Create(context.TODO(), rs, metav1.CreateOptions{})
+		if err != nil {
+			fmt.Println("failed to create the replicaset: ", err)
+			os.Exit(1)
+		}
+		fmt.Printf("created replicaset perf-testing-%v\n", num)
 	}
+
 }
 
-func newReplicaset() *v1.ReplicaSet {
+func newReplicaset(i string) *v1.ReplicaSet {
 	r := int32(replicas)
 	boolTrue := true
 	boolFalse := false
 
 	return &v1.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "perf-testing",
+			Name:      "perf-testing-" + i,
 			Namespace: "test",
 			Labels: map[string]string{
 				"app.kubernetes.io/name": "perf-testing",
