@@ -32,6 +32,9 @@ func main() {
 	flagset.IntVar(&replicas, "replicas", 50, "Configure the replica number of the replicaset")
 	flagset.IntVar(&count, "count", 50, "Configure the total number of the replicaset")
 
+	flagset.VisitAll(func(f *flag.Flag) {
+		flag.CommandLine.Var(f.Value, f.Name, f.Usage)
+	})
 	flag.Parse()
 
 	clientConfig, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
