@@ -90,17 +90,16 @@ func main() {
 				os.Exit(0)
 			}
 			for i := 0; i < count; i++ {
-				j := i
-				go func(j int) {
-					num := strconv.Itoa(j)
-					rs := newReplicaset(num)
+				num := strconv.Itoa(i)
+				rs := newReplicaset(num)
+				go func() {
 					_, err = client.AppsV1().ReplicaSets(namespace).Create(context.TODO(), rs, metav1.CreateOptions{})
 					if err != nil {
 						fmt.Println("failed to create the replicaset: ", err)
 						os.Exit(1)
 					}
-					fmt.Printf("created replicaset perf-testing-rs-%v\n", num)
-				}(j)
+				}()
+				fmt.Printf("created replicaset perf-testing-rs-%v\n", num)
 			}
 		case "deployments":
 			if delete {
