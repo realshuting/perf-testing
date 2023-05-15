@@ -23,6 +23,7 @@ var (
 	clientRateLimitQPS   float64
 	replicas             int
 	count                int
+	delete               bool
 )
 
 func main() {
@@ -34,8 +35,9 @@ func main() {
 	flagset.StringVar(&kinds, "kinds", "", "comma separated string which takes resource kinds to be created")
 	flagset.Float64Var(&clientRateLimitQPS, "clientRateLimitQPS", qps, "Configure the maximum QPS to the Kubernetes API server from Kyverno. Uses the client default if zero.")
 	flagset.IntVar(&clientRateLimitBurst, "clientRateLimitBurst", burst, "Configure the maximum burst for throttle. Uses the client default if zero.")
-	flagset.IntVar(&replicas, "replicas", 50, "Configure the replica number of the replicaset")
-	flagset.IntVar(&count, "count", 50, "Configure the total number of the replicaset")
+	flagset.IntVar(&replicas, "replicas", 50, "Configure the replica number of the resource to be created")
+	flagset.IntVar(&count, "count", 50, "Configure the total number of the resource to be created")
+	flagset.BoolVar(&delete, "delete", false, "clean up resources")
 
 	flagset.VisitAll(func(f *flag.Flag) {
 		flag.CommandLine.Var(f.Value, f.Name, f.Usage)
@@ -60,6 +62,13 @@ func main() {
 	for _, kind := range resourceKinds {
 		switch kind {
 		case "pods":
+			if delete {
+				if err := client.CoreV1().Pods(namespace).DeleteCollection(context.TODO(), metav1.DeleteOptions{}, metav1.ListOptions{}); err != nil {
+					fmt.Println("failed to delete the collection of pods: ", err)
+					os.Exit(1)
+				}
+				os.Exit(0)
+			}
 			for i := 0; i < count; i++ {
 				num := strconv.Itoa(i)
 				pod := newPod(num)
@@ -71,6 +80,13 @@ func main() {
 				fmt.Printf("created replicaset perf-testing-pod-%v\n", num)
 			}
 		case "replicasets":
+			if delete {
+				if err := client.AppsV1().ReplicaSets(namespace).DeleteCollection(context.TODO(), metav1.DeleteOptions{}, metav1.ListOptions{}); err != nil {
+					fmt.Println("failed to delete the collection of replicasets: ", err)
+					os.Exit(1)
+				}
+				os.Exit(0)
+			}
 			for i := 0; i < count; i++ {
 				num := strconv.Itoa(i)
 				rs := newReplicaset(num)
@@ -82,6 +98,13 @@ func main() {
 				fmt.Printf("created replicaset perf-testing-rs-%v\n", num)
 			}
 		case "deployments":
+			if delete {
+				if err := client.AppsV1().Deployments(namespace).DeleteCollection(context.TODO(), metav1.DeleteOptions{}, metav1.ListOptions{}); err != nil {
+					fmt.Println("failed to delete the collection of deployments: ", err)
+					os.Exit(1)
+				}
+				os.Exit(0)
+			}
 			for i := 0; i < count; i++ {
 				num := strconv.Itoa(i)
 				deploy := newDeployment(num)
