@@ -70,16 +70,15 @@ func main() {
 				os.Exit(0)
 			}
 			for i := 0; i < count; i++ {
-				j := i
-				go func(j int) {
-					num := strconv.Itoa(j)
-					pod := newPod(num)
+				num := strconv.Itoa(i)
+				pod := newPod(num)
+				go func() {
 					if _, err = client.CoreV1().Pods(namespace).Create(context.TODO(), pod, metav1.CreateOptions{}); err != nil {
 						fmt.Println("failed to create the pod: ", err)
 						os.Exit(1)
 					}
 					fmt.Printf("created replicaset perf-testing-pod-%v\n", num)
-				}(j)
+				}()
 			}
 		case "replicasets":
 			if delete {
