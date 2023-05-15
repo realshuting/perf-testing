@@ -72,14 +72,11 @@ func main() {
 			for i := 0; i < count; i++ {
 				num := strconv.Itoa(i)
 				pod := newPod(num)
-
-				go func() {
-					_, err = client.CoreV1().Pods(namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
-					if err != nil {
-						fmt.Println("failed to create the pod: ", err)
-						os.Exit(1)
-					}
-				}()
+				_, err = client.CoreV1().Pods(namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
+				if err != nil {
+					fmt.Println("failed to create the pod: ", err)
+					os.Exit(1)
+				}
 
 				fmt.Printf("created replicaset perf-testing-pod-%v\n", num)
 			}
@@ -94,13 +91,11 @@ func main() {
 			for i := 0; i < count; i++ {
 				num := strconv.Itoa(i)
 				rs := newReplicaset(num)
-				go func() {
-					_, err = client.AppsV1().ReplicaSets(namespace).Create(context.TODO(), rs, metav1.CreateOptions{})
-					if err != nil {
-						fmt.Println("failed to create the replicaset: ", err)
-						os.Exit(1)
-					}
-				}()
+				_, err = client.AppsV1().ReplicaSets(namespace).Create(context.TODO(), rs, metav1.CreateOptions{})
+				if err != nil {
+					fmt.Println("failed to create the replicaset: ", err)
+					os.Exit(1)
+				}
 				fmt.Printf("created replicaset perf-testing-rs-%v\n", num)
 			}
 		case "deployments":
@@ -112,17 +107,14 @@ func main() {
 				os.Exit(0)
 			}
 			for i := 0; i < count; i++ {
-				j := i
-				go func(j int) {
-					num := strconv.Itoa(j)
-					deploy := newDeployment(num)
-					_, err = client.AppsV1().Deployments(namespace).Create(context.TODO(), deploy, metav1.CreateOptions{})
-					if err != nil {
-						fmt.Println("failed to create the deployment: ", err)
-						os.Exit(1)
-					}
-					fmt.Printf("created replicaset perf-testing-deploy-%v\n", num)
-				}(j)
+				num := strconv.Itoa(i)
+				deploy := newDeployment(num)
+				_, err = client.AppsV1().Deployments(namespace).Create(context.TODO(), deploy, metav1.CreateOptions{})
+				if err != nil {
+					fmt.Println("failed to create the deployment: ", err)
+					os.Exit(1)
+				}
+				fmt.Printf("created replicaset perf-testing-deploy-%v\n", num)
 			}
 		}
 	}
