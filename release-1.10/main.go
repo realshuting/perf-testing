@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -17,6 +18,7 @@ import (
 var (
 	kubeconfig           string
 	namespace            string
+	kinds                string
 	clientRateLimitBurst int
 	clientRateLimitQPS   float64
 	replicas             int
@@ -29,6 +31,7 @@ func main() {
 	flagset := flag.NewFlagSet("perf-testing", flag.ExitOnError)
 	flagset.StringVar(&kubeconfig, "kubeconfig", "/root/.kube/config", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flagset.StringVar(&namespace, "namespace", "test", "Namespace to create the resource")
+	flagset.StringVar(&kinds, "kinds", "", "comma separated string which takes resource kinds to be created")
 	flagset.Float64Var(&clientRateLimitQPS, "clientRateLimitQPS", qps, "Configure the maximum QPS to the Kubernetes API server from Kyverno. Uses the client default if zero.")
 	flagset.IntVar(&clientRateLimitBurst, "clientRateLimitBurst", burst, "Configure the maximum burst for throttle. Uses the client default if zero.")
 	flagset.IntVar(&replicas, "replicas", 50, "Configure the replica number of the replicaset")
@@ -47,34 +50,71 @@ func main() {
 
 	clientConfig.Burst = clientRateLimitBurst
 	clientConfig.QPS = float32(clientRateLimitQPS)
-
 	client, err := k8s_io_client_go_kubernetes.NewForConfig(clientConfig)
 	if err != nil {
 		fmt.Println("error creating client set: ", err)
 		os.Exit(1)
 	}
 
-	for i := 0; i < count; i++ {
-		num := strconv.Itoa(i)
-		rs := newReplicaset(num)
-		_, err = client.AppsV1().ReplicaSets(namespace).Create(context.TODO(), rs, metav1.CreateOptions{})
-		if err != nil {
-			fmt.Println("failed to create the replicaset: ", err)
-			os.Exit(1)
+	resourceKinds := strings.Split(kinds, ",")
+	for _, kind := range resourceKinds {
+		switch kind {
+		case "pods":
+			for i := 0; i < count; i++ {
+				num := strconv.Itoa(i)
+				pod := newPod(num)
+				_, err = client.CoreV1().Pods(namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
+				if err != nil {
+					fmt.Println("failed to create the pod: ", err)
+					os.Exit(1)
+				}
+				fmt.Printf("created replicaset perf-testing-pod-%v\n", num)
+			}
+		case "replicasets":
+			for i := 0; i < count; i++ {
+				num := strconv.Itoa(i)
+				rs := newReplicaset(num)
+				_, err = client.AppsV1().ReplicaSets(namespace).Create(context.TODO(), rs, metav1.CreateOptions{})
+				if err != nil {
+					fmt.Println("failed to create the replicaset: ", err)
+					os.Exit(1)
+				}
+				fmt.Printf("created replicaset perf-testing-rs-%v\n", num)
+			}
+		case "deployments":
+			for i := 0; i < count; i++ {
+				num := strconv.Itoa(i)
+				deploy := newDeployment(num)
+				_, err = client.AppsV1().Deployments(namespace).Create(context.TODO(), deploy, metav1.CreateOptions{})
+				if err != nil {
+					fmt.Println("failed to create the deployment: ", err)
+					os.Exit(1)
+				}
+				fmt.Printf("created replicaset perf-testing-deploy-%v\n", num)
+			}
 		}
-		fmt.Printf("created replicaset perf-testing-%v\n", num)
 	}
 
 }
 
+func newPod(i string) *corev1.Pod {
+	return &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "perf-testing-pod" + i,
+			Namespace: "test",
+			Labels: map[string]string{
+				"app.kubernetes.io/name": "perf-testing",
+			},
+		},
+		Spec: newPodSpec(),
+	}
+}
+
 func newReplicaset(i string) *v1.ReplicaSet {
 	r := int32(replicas)
-	boolTrue := true
-	boolFalse := false
-
 	return &v1.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "perf-testing-" + i,
+			Name:      "perf-testing-rs" + i,
 			Namespace: "test",
 			Labels: map[string]string{
 				"app.kubernetes.io/name": "perf-testing",
@@ -93,43 +133,78 @@ func newReplicaset(i string) *v1.ReplicaSet {
 						"app.kubernetes.io/name": "perf-testing",
 					},
 				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:  "nginx",
-							Image: "nginx",
-							SecurityContext: &corev1.SecurityContext{
-								AllowPrivilegeEscalation: &boolFalse,
-								RunAsNonRoot:             &boolTrue,
-								SeccompProfile: &corev1.SeccompProfile{
-									Type: corev1.SeccompProfileTypeRuntimeDefault,
-								},
-								Capabilities: &corev1.Capabilities{
-									Drop: []corev1.Capability{"ALL"},
-								},
-							},
-						},
+				Spec: newPodSpec(),
+			},
+		},
+	}
+}
+
+func newDeployment(i string) *v1.Deployment {
+	r := int32(replicas)
+	return &v1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "perf-testing-deploy" + i,
+			Namespace: "test",
+			Labels: map[string]string{
+				"app.kubernetes.io/name": "perf-testing",
+			},
+		},
+		Spec: v1.DeploymentSpec{
+			Replicas: &r,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app.kubernetes.io/name": "perf-testing",
+				},
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"app.kubernetes.io/name": "perf-testing",
 					},
-					Tolerations: []corev1.Toleration{
-						{
-							Key:      "kwok.x-k8s.io/node",
-							Operator: corev1.TolerationOpExists,
-							Effect:   corev1.TaintEffectNoSchedule,
-						},
+				},
+				Spec: newPodSpec(),
+			},
+		},
+	}
+}
+
+func newPodSpec() corev1.PodSpec {
+	boolTrue := true
+	boolFalse := false
+	return corev1.PodSpec{
+		Containers: []corev1.Container{
+			{
+				Name:  "nginx",
+				Image: "nginx",
+				SecurityContext: &corev1.SecurityContext{
+					AllowPrivilegeEscalation: &boolFalse,
+					RunAsNonRoot:             &boolTrue,
+					SeccompProfile: &corev1.SeccompProfile{
+						Type: corev1.SeccompProfileTypeRuntimeDefault,
 					},
-					Affinity: &corev1.Affinity{
-						NodeAffinity: &corev1.NodeAffinity{
-							RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
-								NodeSelectorTerms: []corev1.NodeSelectorTerm{
-									{
-										MatchExpressions: []corev1.NodeSelectorRequirement{
-											{
-												Key:      "type",
-												Operator: corev1.NodeSelectorOpIn,
-												Values:   []string{"kwok"},
-											},
-										},
-									},
+					Capabilities: &corev1.Capabilities{
+						Drop: []corev1.Capability{"ALL"},
+					},
+				},
+			},
+		},
+		Tolerations: []corev1.Toleration{
+			{
+				Key:      "kwok.x-k8s.io/node",
+				Operator: corev1.TolerationOpExists,
+				Effect:   corev1.TaintEffectNoSchedule,
+			},
+		},
+		Affinity: &corev1.Affinity{
+			NodeAffinity: &corev1.NodeAffinity{
+				RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+					NodeSelectorTerms: []corev1.NodeSelectorTerm{
+						{
+							MatchExpressions: []corev1.NodeSelectorRequirement{
+								{
+									Key:      "type",
+									Operator: corev1.NodeSelectorOpIn,
+									Values:   []string{"kwok"},
 								},
 							},
 						},
