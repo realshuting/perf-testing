@@ -74,7 +74,7 @@ func main() {
 			for i := 0; i < count; i++ {
 				num := strconv.Itoa(i)
 				wg.Add(1)
-				go func(wg *sync.WaitGroup) {
+				go func(num string, wg *sync.WaitGroup) {
 					pod := newPod(num)
 					_, err = client.CoreV1().Pods(namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
 					if err != nil {
@@ -82,7 +82,7 @@ func main() {
 						os.Exit(1)
 					}
 					wg.Done()
-				}(&wg)
+				}(num, &wg)
 
 				fmt.Printf("created replicaset perf-testing-pod-%v\n", num)
 			}
