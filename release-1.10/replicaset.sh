@@ -1,6 +1,14 @@
-kubectl create ns test
+#!/bin/bash
 
-kubectl apply -f - <<EOF
+# read user input for count
+echo "Enter the count:"
+read count
+
+# iterate $count number of times
+for (( i=1; i<=$count; i++ ))
+do
+  # generate YAML configuration using heredoc with COUNT variable substitution
+  yaml=$(cat <<-END
 apiVersion: apps/v1
 kind: ReplicaSet
 metadata:
@@ -8,7 +16,7 @@ metadata:
     app.kubernetes.io/component: perf-testing
     app.kubernetes.io/instance: perf-testing
     app.kubernetes.io/name: perf-testing
-  name: perf-testing-1
+  name: perf-testing-$i
   namespace: test
 spec:
   replicas: 1000
@@ -48,4 +56,9 @@ spec:
                   operator: In
                   values:
                     - kwok
-EOF
+END
+)
+
+  # apply the generated configuration to Kubernetes cluster
+  echo "$yaml" | kubectl apply -f -
+done
