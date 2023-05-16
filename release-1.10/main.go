@@ -74,9 +74,8 @@ func main() {
 			for i := 0; i < count; i++ {
 				num := strconv.Itoa(i)
 				pod := newPod(num)
-
+				wg.Add(1)
 				go func(wg *sync.WaitGroup) {
-					wg.Add(1)
 					_, err = client.CoreV1().Pods(namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
 					if err != nil {
 						fmt.Println("failed to create the pod: ", err)
