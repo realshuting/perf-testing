@@ -79,12 +79,12 @@ func main() {
 					_, err = client.CoreV1().Pods(namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
 					if err != nil {
 						fmt.Println("failed to create the pod: ", err)
-						os.Exit(1)
+						// os.Exit(1)
 					}
 					wg.Done()
 				}(num, &wg)
 
-				fmt.Printf("created replicaset perf-testing-pod-%v\n", num)
+				fmt.Printf("created pod perf-testing-pod-%v\n", num)
 			}
 			wg.Wait()
 		case "replicasets":
@@ -121,7 +121,7 @@ func main() {
 					fmt.Println("failed to create the deployment: ", err)
 					os.Exit(1)
 				}
-				fmt.Printf("created replicaset perf-testing-deploy-%v\n", num)
+				fmt.Printf("created deployment perf-testing-deploy-%v\n", num)
 			}
 		}
 	}
