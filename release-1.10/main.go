@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -69,17 +70,24 @@ func main() {
 				}
 				os.Exit(0)
 			}
+			var wg sync.WaitGroup
 			for i := 0; i < count; i++ {
 				num := strconv.Itoa(i)
 				pod := newPod(num)
-				_, err = client.CoreV1().Pods(namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
-				if err != nil {
-					fmt.Println("failed to create the pod: ", err)
-					os.Exit(1)
-				}
+
+				go func(wg *sync.WaitGroup) {
+					wg.Add(1)
+					_, err = client.CoreV1().Pods(namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
+					if err != nil {
+						fmt.Println("failed to create the pod: ", err)
+						os.Exit(1)
+					}
+					wg.Done()
+				}(&wg)
 
 				fmt.Printf("created replicaset perf-testing-pod-%v\n", num)
 			}
+			wg.Wait()
 		case "replicasets":
 			if delete {
 				if err := client.AppsV1().ReplicaSets(namespace).DeleteCollection(context.TODO(), metav1.DeleteOptions{}, metav1.ListOptions{}); err != nil {
