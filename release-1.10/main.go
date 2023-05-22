@@ -131,8 +131,8 @@ func main() {
 func newPod(i string) *corev1.Pod {
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "perf-testing-pod" + i,
-			Namespace: "test",
+			Name:      "perf-testing-pod-" + i,
+			Namespace: namespace,
 			Labels: map[string]string{
 				"app.kubernetes.io/name": "perf-testing",
 			},
@@ -146,7 +146,7 @@ func newReplicaset(i string) *v1.ReplicaSet {
 	return &v1.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "perf-testing-rs" + i,
-			Namespace: "test",
+			Namespace: namespace,
 			Labels: map[string]string{
 				"app.kubernetes.io/name": "perf-testing",
 			},
@@ -174,8 +174,8 @@ func newDeployment(i string) *v1.Deployment {
 	r := int32(replicas)
 	return &v1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "perf-testing-deploy" + i,
-			Namespace: "test",
+			Name:      "perf-testing-deploy-" + i,
+			Namespace: namespace,
 			Labels: map[string]string{
 				"app.kubernetes.io/name": "perf-testing",
 			},
